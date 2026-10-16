@@ -9,7 +9,7 @@ class SpaceStation(BaseModel):
     crew_size: int = Field(ge=1, le=20)
     power_level: float = Field(ge=0.0, le=100.0)
     oxygen_level: float = Field(ge=0.0, le=100.0)
-    last_maintenance: datetime
+    last_maintenance: datetime = Field()
     is_operational: bool = True
     notes: str | None = Field(default=None, max_length=200)
 
@@ -18,14 +18,15 @@ def main() -> None:
     print("Space Station Data Validation")
     print("=" * 40)
 
-    station = SpaceStation.model_validate({
+    station_data = {
         "station_id": "ISS001",
         "name": "International Space Station",
         "crew_size": 6,
         "power_level": 85.5,
         "oxygen_level": 92.3,
         "last_maintenance": "2024-01-15T10:30:00",
-    })
+    }
+    station = SpaceStation.model_validate(station_data)
     print("Valid station created:")
     print(f"ID: {station.station_id}")
     print(f"Name: {station.name}")
@@ -37,14 +38,9 @@ def main() -> None:
 
     print("\n" + "=" * 40)
     try:
-        SpaceStation.model_validate({
-            "station_id": "BAD001",
-            "name": "Invalid Station",
-            "crew_size": 25,
-            "power_level": 85.5,
-            "oxygen_level": 92.3,
-            "last_maintenance": "2024-01-15T10:30:00",
-        })
+        invalid_data = station_data.copy()
+        invalid_data["crew_size"] = 25
+        SpaceStation.model_validate(invalid_data)
     except ValidationError as error:
         print("Expected validation error:")
         print(error.errors()[0]["msg"])

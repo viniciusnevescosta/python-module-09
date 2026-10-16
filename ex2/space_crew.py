@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime
 from enum import Enum
-from typing import Self
 
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
@@ -34,7 +35,7 @@ class SpaceMission(BaseModel):
     budget_millions: float = Field(ge=1.0, le=10000.0)
 
     @model_validator(mode="after")
-    def validate_mission_rules(self) -> Self:
+    def validate_mission_rules(self) -> SpaceMission:
         if not self.mission_id.startswith("M"):
             raise ValueError("Mission ID must start with 'M'")
         command_ranks = {Rank.COMMANDER, Rank.CAPTAIN}
@@ -43,10 +44,11 @@ class SpaceMission(BaseModel):
                 "Mission must have at least one Commander or Captain"
             )
         if self.duration_days > 365:
-            experienced = sum(
-                member.years_experience >= 5 for member in self.crew
-            )
-            if experienced * 2 < len(self.crew):
+            experienced = [
+                member for member in self.crew
+                if member.years_experience >= 5
+            ]
+            if len(experienced) * 2 < len(self.crew):
                 raise ValueError(
                     "Long missions need at least 50% experienced crew"
                 )
@@ -103,7 +105,7 @@ def display_mission(mission: SpaceMission) -> None:
 def main() -> None:
     print("Space Mission Crew Validation")
     print("=" * 41)
-    mission = SpaceMission.model_validate({
+    mission_data = {
         "mission_id": "M2024_MARS",
         "mission_name": "Mars Colony Establishment",
         "destination": "Mars",
@@ -111,29 +113,23 @@ def main() -> None:
         "duration_days": 900,
         "crew": build_valid_crew(),
         "budget_millions": 2500.0,
-    })
+    }
+    mission = SpaceMission.model_validate(mission_data)
     display_mission(mission)
 
     print("\n" + "=" * 41)
     try:
-        SpaceMission.model_validate({
-            "mission_id": "M2024_TEST",
-            "mission_name": "Test Mission",
-            "destination": "Moon",
-            "launch_date": "2024-10-01T08:00:00",
-            "duration_days": 120,
-            "crew": [
-                CrewMember(
-                    member_id="CM004",
-                    name="Test Cadet",
-                    rank=Rank.CADET,
-                    age=22,
-                    specialization="Research",
-                    years_experience=1,
-                )
-            ],
-            "budget_millions": 50.0,
-        })
+        cadet = CrewMember(
+            member_id="CM004",
+            name="Test Cadet",
+            rank=Rank.CADET,
+            age=22,
+            specialization="Research",
+            years_experience=1,
+        )
+        invalid_data = mission_data.copy()
+        invalid_data["crew"] = [cadet]
+        SpaceMission.model_validate(invalid_data)
     except ValidationError as error:
         print("Expected validation error:")
         print(error.errors()[0]["msg"])
